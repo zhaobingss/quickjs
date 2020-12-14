@@ -61,6 +61,8 @@ func (r Runtime) ExecutePendingJob() (Context, error) {
 
 type Function func(ctx *Context, this Value, args []Value) Value
 
+
+
 type funcEntry struct {
 	ctx *Context
 	fn  Function
@@ -85,6 +87,11 @@ func restoreFuncPtr(ptr int64) funcEntry {
 	funcPtrLock.Lock()
 	defer funcPtrLock.Unlock()
 	return funcPtrStore[ptr]
+}
+
+/// 释放函数在map中占用内存
+func FreeFunction(id int64)  {
+	delete(funcPtrStore, id)
 }
 
 //func freeFuncPtr(ptr int64) {
@@ -130,10 +137,10 @@ func (ctx *Context) Free() {
 	C.JS_FreeContext(ctx.ref)
 }
 
-func (ctx *Context) Function(fn Function) Value {
+func (ctx *Context) Function(fn Function) (Value,int64) {
 	val := ctx.eval(`(proxy, id) => function() { return proxy.call(this, id, ...arguments); }`)
 	if val.IsException() {
-		return val
+		return val,-1
 	}
 	defer val.Free()
 
@@ -149,7 +156,7 @@ func (ctx *Context) Function(fn Function) Value {
 
 	args := []C.JSValue{ctx.proxy.ref, funcPtrVal.ref}
 
-	return Value{ctx: ctx, ref: C.JS_Call(ctx.ref, val.ref, ctx.Null().ref, C.int(len(args)), &args[0])}
+	return Value{ctx: ctx, ref: C.JS_Call(ctx.ref, val.ref, ctx.Null().ref, C.int(len(args)), &args[0])},funcPtr
 }
 
 func (ctx *Context) Null() Value {
@@ -411,8 +418,10 @@ func (v Value) Set(name string, val Value) {
 	C.JS_SetPropertyStr(v.ctx.ref, v.ref, namePtr, val.ref)
 }
 
-func (v Value) SetFunction(name string, fn Function) {
-	v.Set(name, v.ctx.Function(fn))
+func (v Value) SetFunction(name string, fn Function) int64 {
+	val, id := v.ctx.Function(fn)
+	v.Set(name, val)
+	return id
 }
 
 type Error struct {
