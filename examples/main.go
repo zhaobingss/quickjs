@@ -4,7 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/lithdew/quickjs"
+	"github.com/zhaobingss/quickjs"
 	"strings"
 )
 
@@ -85,8 +85,10 @@ func main() {
 		return ctx.Null()
 	}
 
-	globals.Set("A", context.Function(A))
-	globals.Set("B", context.Function(B))
+	a,_ := context.Function(A)
+	b,_ := context.Function(B)
+	globals.Set("A", a)
+	globals.Set("B", b)
 
 	_, err = context.Eval(`for (let i = 0; i < 10; i++) { if (i % 2 === 0) A(); else B(); }`)
 	check(err)
