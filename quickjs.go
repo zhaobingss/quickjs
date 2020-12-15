@@ -61,8 +61,6 @@ func (r Runtime) ExecutePendingJob() (Context, error) {
 
 type Function func(ctx *Context, this Value, args []Value) Value
 
-
-
 type funcEntry struct {
 	ctx *Context
 	fn  Function
@@ -91,7 +89,13 @@ func restoreFuncPtr(ptr int64) funcEntry {
 
 /// 释放函数在map中占用内存
 func FreeFunction(id int64)  {
-	delete(funcPtrStore, id)
+	fe, ok := funcPtrStore[id]
+	if ok {
+		if fe.ctx != nil {
+			fe.ctx.Free()
+		}
+		delete(funcPtrStore, id)
+	}
 }
 
 //func freeFuncPtr(ptr int64) {
